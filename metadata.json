@@ -1,0 +1,8 @@
+{
+  "name": "Satu Meja - Coffee, Smoke, Talk",
+  "description": "Website kedai kopi Satu Meja dengan menu kopi pilihan, galeri suasana, cerita filosofi, dan pemesanan WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
