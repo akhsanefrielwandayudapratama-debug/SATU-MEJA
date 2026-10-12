@@ -65,10 +65,10 @@ export const BerandaSection: React.FC<BerandaSectionProps> = ({
           </div>
         </div>
 
-        {/* Vintage Seal Right */}
+        {/* Square Logo Right */}
         <div className="lg:col-span-5 flex justify-center">
-          <div className="w-full max-w-[280px] sm:max-w-[320px] aspect-square rounded-3xl bg-[#1D231E] p-4 shadow-xl border border-[#2D382F] flex items-center justify-center">
-            <SatuMejaEmblem size="100%" />
+          <div className="w-full max-w-[280px] sm:max-w-[320px] aspect-square rounded-3xl bg-[#1D231E] overflow-hidden shadow-xl border border-[#2D382F]">
+            <SatuMejaEmblem size="100%" shape="square" />
           </div>
         </div>
       </div>

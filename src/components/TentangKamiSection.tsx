@@ -24,10 +24,10 @@ export const TentangKamiSection: React.FC<TentangKamiSectionProps> = ({
 
       {/* Main 3-Column Layout from UI Design */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-        {/* Left Column: Vintage Circular Emblem (4 cols on lg) */}
+        {/* Left Column: Square Logo (4 cols on lg) */}
         <div className="lg:col-span-4 flex justify-center lg:justify-start">
-          <div className="w-full max-w-[340px] aspect-square rounded-2xl bg-[#1D231E] p-4 shadow-xl border border-[#2D382F] flex items-center justify-center transition-transform hover:scale-[1.01]">
-            <SatuMejaEmblem size="100%" />
+          <div className="w-full max-w-[340px] aspect-square rounded-2xl bg-[#1D231E] overflow-hidden shadow-xl border border-[#2D382F] transition-transform hover:scale-[1.01]">
+            <SatuMejaEmblem size="100%" shape="square" />
           </div>
         </div>
 

@@ -4,21 +4,26 @@ interface SatuMejaEmblemProps {
   className?: string;
   size?: number | string;
   variant?: 'badge-card' | 'icon' | 'stamp-only';
+  shape?: 'circle' | 'square';
 }
 
 export const SatuMejaEmblem: React.FC<SatuMejaEmblemProps> = ({
   className = '',
   size = 320,
   variant = 'stamp-only',
+  shape = 'circle',
 }) => {
   const logoSrc = `${import.meta.env.BASE_URL}logo-satu-meja-bg.png`;
+  const isSquare = shape === 'square';
 
   const imgContent = (
     <img
       src={logoSrc}
       alt="Emblem Satu Meja - Kopi Rokok Diskusi"
       loading="lazy"
-      className="w-full h-full object-cover rounded-full select-none"
+      className={`w-full h-full object-cover select-none ${
+        isSquare ? 'rounded-none' : 'rounded-full'
+      }`}
     />
   );
 
@@ -38,7 +43,10 @@ export const SatuMejaEmblem: React.FC<SatuMejaEmblemProps> = ({
   }
 
   return (
-    <div className={`inline-block ${className}`} style={{ width: size, height: size }}>
+    <div
+      className={`inline-block overflow-hidden ${isSquare ? 'rounded-none' : 'rounded-full'} ${className}`}
+      style={{ width: size, height: size }}
+    >
       {imgContent}
     </div>
   );
