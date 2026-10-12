@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { MenuItem, GalleryPhoto, CategoryType } from '../types';
 import { X, Lock, Plus, Trash2, Edit2, RotateCcw, Check, LogOut, Coffee, Image as ImageIcon } from 'lucide-react';
 
@@ -11,6 +11,45 @@ interface AdminModalProps {
   onSaveGalleryPhotos: (photos: GalleryPhoto[]) => void;
   onResetToDefault: () => void;
 }
+
+// Max file mentah 10MB, hasil kompres max 1024px sisi panjang, JPEG kualitas 0.82
+const MAX_RAW_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 1024;
+
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      reject(new Error('File harus berupa gambar.'));
+      return;
+    }
+    if (file.size > MAX_RAW_FILE_BYTES) {
+      reject(new Error('Ukuran foto terlalu besar (maks 10MB).'));
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Gagal memproses foto.'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Gagal membaca foto.'));
+    };
+    img.src = objectUrl;
+  });
+};
 
 export const AdminModal: React.FC<AdminModalProps> = ({
   isOpen,
@@ -39,6 +78,64 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [photoSubtitle, setPhotoSubtitle] = useState('');
   const [photoCategory, setPhotoCategory] = useState<'coffee' | 'atmosphere' | 'barista'>('coffee');
   const [photoUrl, setPhotoUrl] = useState('');
+
+  // File picker state (pratinjau + error + ref untuk reset input)
+  const [menuImageError, setMenuImageError] = useState('');
+  const [photoImageError, setPhotoImageError] = useState('');
+  const [isReadingMenuImage, setIsReadingMenuImage] = useState(false);
+  const [isReadingPhotoImage, setIsReadingPhotoImage] = useState(false);
+  const menuFileRef = useRef<HTMLInputElement>(null);
+  const photoFileRef = useRef<HTMLInputElement>(null);
+
+  const resetMenuForm = () => {
+    setEditingMenuId(null);
+    setMenuName('');
+    setMenuDesc('');
+    setMenuPrice('15000');
+    setMenuImage('');
+    setMenuImageError('');
+    if (menuFileRef.current) menuFileRef.current.value = '';
+  };
+
+  const resetPhotoForm = () => {
+    setPhotoTitle('');
+    setPhotoSubtitle('');
+    setPhotoUrl('');
+    setPhotoImageError('');
+    if (photoFileRef.current) photoFileRef.current.value = '';
+  };
+
+  const handleMenuFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsReadingMenuImage(true);
+    setMenuImageError('');
+    try {
+      const dataUrl = await compressImage(file);
+      setMenuImage(dataUrl);
+    } catch (err) {
+      setMenuImageError(err instanceof Error ? err.message : 'Gagal membaca foto.');
+      if (menuFileRef.current) menuFileRef.current.value = '';
+    } finally {
+      setIsReadingMenuImage(false);
+    }
+  };
+
+  const handlePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsReadingPhotoImage(true);
+    setPhotoImageError('');
+    try {
+      const dataUrl = await compressImage(file);
+      setPhotoUrl(dataUrl);
+    } catch (err) {
+      setPhotoImageError(err instanceof Error ? err.message : 'Gagal membaca foto.');
+      if (photoFileRef.current) photoFileRef.current.value = '';
+    } finally {
+      setIsReadingPhotoImage(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -91,10 +188,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     }
 
     // Reset Form
-    setMenuName('');
-    setMenuDesc('');
-    setMenuPrice('15000');
-    setMenuImage('');
+    resetMenuForm();
   };
 
   const handleEditMenu = (item: MenuItem) => {
@@ -134,9 +228,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     };
     onSaveGalleryPhotos([newPhoto, ...galleryPhotos]);
 
-    setPhotoTitle('');
-    setPhotoSubtitle('');
-    setPhotoUrl('');
+    resetPhotoForm();
   };
 
   const handleDeletePhoto = (id: string) => {
@@ -344,15 +436,44 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                       <div>
                         <label className="block text-[11px] font-bold text-[#4E382A] mb-1">
-                          URL Foto (Opsional)
+                          Foto Menu
                         </label>
                         <input
-                          type="url"
-                          placeholder="https://images.unsplash.com/..."
-                          value={menuImage}
-                          onChange={(e) => setMenuImage(e.target.value)}
-                          className="w-full px-3 py-1.5 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8]"
+                          ref={menuFileRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleMenuFile}
+                          className="w-full px-3 py-1.5 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8] text-[#4E382A] file:mr-2 file:px-2.5 file:py-1 file:rounded-md file:border-0 file:bg-[#2C1810] file:text-white file:text-[11px] file:font-bold file:cursor-pointer"
                         />
+                        {isReadingMenuImage && (
+                          <p className="text-[11px] text-[#7A685A] mt-1">Memproses foto...</p>
+                        )}
+                        {menuImageError && (
+                          <p className="text-[11px] text-[#D32F2F] font-semibold mt-1">
+                            {menuImageError}
+                          </p>
+                        )}
+                        {menuImage && (
+                          <div className="relative mt-2 w-24 h-24 rounded-lg overflow-hidden border border-[#D9CDB8] bg-[#EFE9DD]">
+                            <img
+                              src={menuImage}
+                              alt="Pratinjau foto menu"
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuImage('');
+                                setMenuImageError('');
+                                if (menuFileRef.current) menuFileRef.current.value = '';
+                              }}
+                              className="absolute top-1 right-1 p-1 rounded-md bg-[#D32F2F] text-white cursor-pointer"
+                              title="Hapus foto"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -368,13 +489,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       {editingMenuId && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setEditingMenuId(null);
-                            setMenuName('');
-                            setMenuDesc('');
-                            setMenuPrice('15000');
-                            setMenuImage('');
-                          }}
+                          onClick={resetMenuForm}
                           className="px-3 py-2 bg-[#EAE0D0] text-[#4E382A] text-xs font-semibold rounded-lg cursor-pointer"
                         >
                           Batal
@@ -506,15 +621,44 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                     <div>
                       <label className="block text-[11px] font-bold text-[#4E382A] mb-1">
-                        URL Foto (Image Link)
+                        Foto Galeri
                       </label>
                       <input
-                        type="url"
-                        placeholder="https://images.unsplash.com/..."
-                        value={photoUrl}
-                        onChange={(e) => setPhotoUrl(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8]"
+                        ref={photoFileRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoFile}
+                        className="w-full px-3 py-1.5 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8] text-[#4E382A] file:mr-2 file:px-2.5 file:py-1 file:rounded-md file:border-0 file:bg-[#2C1810] file:text-white file:text-[11px] file:font-bold file:cursor-pointer"
                       />
+                      {isReadingPhotoImage && (
+                        <p className="text-[11px] text-[#7A685A] mt-1">Memproses foto...</p>
+                      )}
+                      {photoImageError && (
+                        <p className="text-[11px] text-[#D32F2F] font-semibold mt-1">
+                          {photoImageError}
+                        </p>
+                      )}
+                      {photoUrl && (
+                        <div className="relative mt-2 w-24 h-24 rounded-lg overflow-hidden border border-[#D9CDB8] bg-[#E2D7C5]">
+                          <img
+                            src={photoUrl}
+                            alt="Pratinjau foto galeri"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPhotoUrl('');
+                              setPhotoImageError('');
+                              if (photoFileRef.current) photoFileRef.current.value = '';
+                            }}
+                            className="absolute top-1 right-1 p-1 rounded-md bg-[#D32F2F] text-white cursor-pointer"
+                            title="Hapus foto"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <button
