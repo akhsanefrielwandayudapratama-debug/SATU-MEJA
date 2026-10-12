@@ -44,17 +44,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
   const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (pinInput === '1234' || pinInput === 'satumeja' || pinInput === 'admin') {
+    if (pinInput === 'baristaDU26') {
       setIsAuthenticated(true);
       setErrorMsg('');
     } else {
-      setErrorMsg('PIN salah. Gunakan PIN demo "1234".');
+      setErrorMsg('Password salah. Silakan coba lagi.');
     }
-  };
-
-  const handleQuickDemoLogin = () => {
-    setIsAuthenticated(true);
-    setErrorMsg('');
   };
 
   // MENU CRUD
@@ -210,8 +205,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 Masuk Akun Barista
               </h4>
               <p className="text-xs text-[#6E594B]">
-                Masukkan PIN Barista untuk mengedit katalog menu & galeri.
-                (PIN Demo: <code className="bg-[#EAE0D0] px-1 py-0.5 rounded font-mono font-bold">1234</code>)
+                Masukkan password Barista untuk mengedit katalog menu & galeri.
               </p>
 
               {errorMsg && (
@@ -223,7 +217,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               <form onSubmit={handleLogin} className="space-y-3 pt-2">
                 <input
                   type="password"
-                  placeholder="Masukkan PIN (1234)"
+                  placeholder="Masukkan password"
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value)}
                   className="w-full text-center px-4 py-2.5 bg-white border border-[#D9CDB8] rounded-xl text-lg font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-[#2C1810]/20"
@@ -234,14 +228,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   className="w-full py-2.5 bg-[#2C1810] hover:bg-[#432618] text-white font-bold text-sm rounded-xl transition-all cursor-pointer"
                 >
                   Masuk
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleQuickDemoLogin}
-                  className="w-full py-2 bg-[#FAF6F0] hover:bg-[#EAE0D0] text-[#2C1810] font-semibold text-xs rounded-xl border border-[#D9CDB8] transition-all cursor-pointer"
-                >
-                  ⚡ Masuk Cepat Demo Barista
                 </button>
               </form>
             </div>
