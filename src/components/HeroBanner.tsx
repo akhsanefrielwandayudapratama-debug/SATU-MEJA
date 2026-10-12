@@ -29,6 +29,10 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
           alt: 'Hubungi Kami di Satu Meja',
         };
       case 'tentang':
+        return {
+          src: `${base}banner-tentang.png`,
+          alt: 'Tentang Kami - berawal dari kopi, tumbuh bersama Anda',
+        };
       case 'beranda':
       default:
         return {
