@@ -73,6 +73,7 @@ export default function App() {
 
   // Cart operations
   const handleAddToCart = (item: MenuItem) => {
+    if (!item.isAvailable) return; // safety: out-of-stock items can't be ordered
     setCart((prev) => {
       const existing = prev.find((c) => c.menuItem.id === item.id);
       if (existing) {

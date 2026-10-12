@@ -95,19 +95,28 @@ export const BerandaSection: React.FC<BerandaSectionProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {featuredMenuItems.slice(0, 4).map((item) => (
+          {featuredMenuItems.slice(0, 4).map((item) => {
+            const isOut = !item.isAvailable;
+            return (
             <div
               key={item.id}
               className="bg-white rounded-2xl p-4 border border-[#E8DFC8] shadow-[0_2px_8px_rgba(44,24,16,0.04)] hover:shadow-[0_8px_20px_rgba(44,24,16,0.08)] transition-all flex flex-col justify-between"
             >
               <div className="space-y-3">
-                <div className="w-full aspect-4/3 rounded-xl overflow-hidden bg-[#ECE4D5]">
+                <div className="relative w-full aspect-4/3 rounded-xl overflow-hidden bg-[#ECE4D5]">
                   <img
                     src={item.image}
                     alt={item.name}
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                    className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${
+                      isOut ? 'grayscale opacity-70' : ''
+                    }`}
                   />
+                  {isOut && (
+                    <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#D32F2F] text-white text-[10px] font-bold rounded-lg shadow">
+                      Stok Habis
+                    </span>
+                  )}
                 </div>
                 <div>
                   <h4 className="font-serif text-lg font-bold text-[#2C1810]">
@@ -125,13 +134,20 @@ export const BerandaSection: React.FC<BerandaSectionProps> = ({
                 </span>
                 <button
                   onClick={() => onAddToCart(item)}
-                  className="px-3 py-1.5 bg-[#2C1810] hover:bg-[#452719] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                  disabled={isOut}
+                  title={isOut ? 'Stok habis' : 'Tambah ke Keranjang'}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                    isOut
+                      ? 'bg-[#E0D5C5] text-[#8A786B] cursor-not-allowed'
+                      : 'bg-[#2C1810] hover:bg-[#452719] text-white cursor-pointer'
+                  }`}
                 >
-                  + Pesan
+                  {isOut ? 'Habis' : '+ Pesan'}
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

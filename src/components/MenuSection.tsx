@@ -17,17 +17,20 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
   const [showAllCoffee, setShowAllCoffee] = useState(false);
   const [showAllNonCoffee, setShowAllNonCoffee] = useState(false);
 
-  // Grouped items
+  // Grouped items (available first, out-of-stock at the end)
+  const sortAvailableFirst = (items: MenuItem[]) =>
+    [...items].sort((a, b) => Number(b.isAvailable) - Number(a.isAvailable));
+
   const coffeeItems = useMemo(
-    () => menuItems.filter((i) => i.category === 'coffee' && i.isAvailable),
+    () => sortAvailableFirst(menuItems.filter((i) => i.category === 'coffee')),
     [menuItems]
   );
   const nonCoffeeItems = useMemo(
-    () => menuItems.filter((i) => i.category === 'non-coffee' && i.isAvailable),
+    () => sortAvailableFirst(menuItems.filter((i) => i.category === 'non-coffee')),
     [menuItems]
   );
   const snackItems = useMemo(
-    () => menuItems.filter((i) => i.category === 'snack' && i.isAvailable),
+    () => sortAvailableFirst(menuItems.filter((i) => i.category === 'snack')),
     [menuItems]
   );
 
@@ -62,6 +65,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
 
   const renderCard = (item: MenuItem) => {
     const isAdded = !!addedItemIds[item.id];
+    const isOut = !item.isAvailable;
 
     return (
       <div
@@ -75,13 +79,20 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
               src={item.image}
               alt={item.name}
               referrerPolicy="no-referrer"
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${
+                isOut ? 'grayscale opacity-70' : ''
+              }`}
               onError={(e) => {
                 // Fallback to warm placeholder pattern
                 (e.target as HTMLImageElement).src =
                   'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80';
               }}
             />
+            {isOut && (
+              <span className="absolute top-1.5 left-1.5 px-2 py-0.5 bg-[#D32F2F] text-white text-[10px] font-bold rounded-lg shadow">
+                Stok Habis
+              </span>
+            )}
           </div>
 
           {/* Details */}
@@ -102,15 +113,20 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
 
               <button
                 onClick={() => handleAdd(item)}
-                className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
-                  isAdded
-                    ? 'bg-[#2E7D32] text-white'
-                    : 'bg-[#2C1810] hover:bg-[#4A2D1F] text-white shadow-sm'
+                disabled={isOut}
+                className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 ${
+                  isOut
+                    ? 'bg-[#E0D5C5] text-[#8A786B] cursor-not-allowed'
+                    : isAdded
+                      ? 'bg-[#2E7D32] text-white cursor-pointer'
+                      : 'bg-[#2C1810] hover:bg-[#4A2D1F] text-white shadow-sm cursor-pointer'
                 }`}
-                title="Tambah ke Keranjang"
-                aria-label={`Tambah ${item.name} ke pesanan`}
+                title={isOut ? 'Stok habis' : 'Tambah ke Keranjang'}
+                aria-label={isOut ? `${item.name} stok habis` : `Tambah ${item.name} ke pesanan`}
               >
-                {isAdded ? (
+                {isOut ? (
+                  <span className="px-1">Habis</span>
+                ) : isAdded ? (
                   <>
                     <Check className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Ditambahkan</span>
