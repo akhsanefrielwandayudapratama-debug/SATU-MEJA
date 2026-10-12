@@ -63,7 +63,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     text += `\nMohon konfirmasi pesanan saya ya mas barista, terima kasih! ☕`;
 
     const encoded = encodeURIComponent(text);
-    const waUrl = `https://wa.me/6281112131415?text=${encoded}`;
+    const waUrl = `https://wa.me/6282216828280?text=${encoded}`;
     window.open(waUrl, '_blank');
   };
 
@@ -236,7 +236,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               className="w-full py-3.5 px-4 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
               <Send className="w-4 h-4" />
-              <span>Checkout ke WhatsApp (081112131415)</span>
+              <span>Checkout ke WhatsApp (082216828280)</span>
             </button>
             <p className="text-[11px] text-center text-[#7E6C5F]">
               Pesanan akan otomatis terkirim langsung ke barista Satu Meja.

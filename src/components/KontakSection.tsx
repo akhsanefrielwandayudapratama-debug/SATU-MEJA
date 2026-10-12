@@ -15,7 +15,7 @@ export const KontakSection: React.FC = () => {
 
     const message = `Halo Barista Satu Meja! Saya ingin reservasi / bertanya:\n\n• Nama: ${nama}\n• No Telp/WA: ${telepon || '-'}\n• Jumlah Orang: ${jumlahOrang} orang\n• Waktu: ${waktu || 'Malam ini'}\n• Catatan: ${catatan || '-'}\n\nTerima kasih!`;
     const encoded = encodeURIComponent(message);
-    const waUrl = `https://wa.me/6281112131415?text=${encoded}`;
+    const waUrl = `https://wa.me/6282216828280?text=${encoded}`;
 
     window.open(waUrl, '_blank');
     setSubmitted(true);
@@ -88,7 +88,7 @@ export const KontakSection: React.FC = () => {
               </h4>
               <div className="flex flex-col gap-2.5">
                 <a
-                  href="https://wa.me/6281112131415"
+                  href="https://wa.me/6282216828280"
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-3 text-xs sm:text-sm text-[#2C1810] hover:text-[#25D366] font-semibold transition-colors"
@@ -96,7 +96,7 @@ export const KontakSection: React.FC = () => {
                   <span className="w-8 h-8 rounded-lg bg-[#EAE1D0] flex items-center justify-center text-[#2C1810]">
                     📱
                   </span>
-                  <span>WhatsApp: 081112131415</span>
+                  <span>WhatsApp: 082216828280</span>
                 </a>
 
                 <a

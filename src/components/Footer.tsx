@@ -58,13 +58,13 @@ export const Footer: React.FC<FooterProps> = ({ onSelectTab }) => {
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-xs sm:text-sm font-medium text-[#FAF6F0]">
             {/* WhatsApp */}
             <a
-              href="https://wa.me/6281112131415"
+              href="https://wa.me/6282216828280"
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-2 hover:text-[#25D366] transition-colors italic tracking-wide"
             >
               <Phone className="w-4 h-4 text-[#D7CCC8]" />
-              <span>081112131415</span>
+              <span>082216828280</span>
             </a>
 
             {/* Instagram */}
