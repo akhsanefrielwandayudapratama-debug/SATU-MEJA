@@ -4,8 +4,9 @@
  */
 
 import { useState, useEffect } from 'react';
-import { TabType, MenuItem, CartItem, GalleryPhoto } from './types';
+import { TabType, MenuItem, CartItem, GalleryPhoto, SiteStatus } from './types';
 import { INITIAL_MENU_ITEMS, INITIAL_GALLERY_PHOTOS } from './data/initialData';
+import { fetchSiteStatus, DEFAULT_SITE_STATUS } from './lib/siteStatus';
 import { Navbar } from './components/Navbar';
 import { HeroBanner } from './components/HeroBanner';
 import { TentangKamiSection } from './components/TentangKamiSection';
@@ -16,6 +17,7 @@ import { KontakSection } from './components/KontakSection';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { AdminModal } from './components/AdminModal';
+import { ClosedScreen } from './components/ClosedScreen';
 
 export default function App() {
   // State for Navigation: default to 'tentang' as in the primary user mockup
@@ -57,6 +59,23 @@ export default function App() {
   // Modals & Drawers
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  // Site open/closed status (read from repo, so all visitors see the same)
+  const [siteStatus, setSiteStatus] = useState<SiteStatus>(DEFAULT_SITE_STATUS);
+  const [isStatusLoaded, setIsStatusLoaded] = useState(false);
+  const [adminSession, setAdminSession] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchSiteStatus().then((status) => {
+      if (!active) return;
+      setSiteStatus(status);
+      setIsStatusLoaded(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Sync to LocalStorage
   useEffect(() => {
@@ -120,68 +139,90 @@ export default function App() {
 
   const cartTotalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Loading splash while reading site status
+  if (!isStatusLoaded) {
+    return (
+      <div className="min-h-screen bg-[#1D231E] flex items-center justify-center">
+        <div className="w-14 h-14 rounded-full border-2 border-[#E6DEC9]/30 border-t-[#E6DEC9] animate-spin" />
+      </div>
+    );
+  }
+
+  const isClosed = !siteStatus.open && !adminSession;
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F0] text-[#2C1810]">
-      {/* 1. Header Navigation */}
-      <Navbar
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
-        onOpenAdmin={() => setIsAdminOpen(true)}
-        onOpenCart={() => setIsCartOpen(true)}
-        cartCount={cartTotalItemsCount}
-      />
+      {isClosed ? (
+        /* Closed mode: full takeover. Admin can still log in to reopen. */
+        <ClosedScreen
+          message={siteStatus.message}
+          reopenInfo={siteStatus.reopenInfo}
+          onOpenAdmin={() => setIsAdminOpen(true)}
+        />
+      ) : (
+        <>
+          {/* 1. Header Navigation */}
+          <Navbar
+            activeTab={activeTab}
+            onSelectTab={setActiveTab}
+            onOpenAdmin={() => setIsAdminOpen(true)}
+            onOpenCart={() => setIsCartOpen(true)}
+            cartCount={cartTotalItemsCount}
+          />
 
-      {/* 2. Hero Dark Banner with Dynamic Section Text */}
-      <HeroBanner
-        activeTab={activeTab}
-        onNavigateToMenu={() => setActiveTab('menu')}
-      />
-
-      {/* 3. Main SPA View Router */}
-      <main className="flex-1">
-        {activeTab === 'tentang' && (
-          <TentangKamiSection
+          {/* 2. Hero Dark Banner with Dynamic Section Text */}
+          <HeroBanner
+            activeTab={activeTab}
             onNavigateToMenu={() => setActiveTab('menu')}
           />
-        )}
 
-        {activeTab === 'menu' && (
-          <MenuSection
-            menuItems={menuItems}
-            onAddToCart={handleAddToCart}
+          {/* 3. Main SPA View Router */}
+          <main className="flex-1">
+            {activeTab === 'tentang' && (
+              <TentangKamiSection
+                onNavigateToMenu={() => setActiveTab('menu')}
+              />
+            )}
+
+            {activeTab === 'menu' && (
+              <MenuSection
+                menuItems={menuItems}
+                onAddToCart={handleAddToCart}
+              />
+            )}
+
+            {activeTab === 'galeri' && (
+              <GaleriSection photos={galleryPhotos} />
+            )}
+
+            {activeTab === 'beranda' && (
+              <BerandaSection
+                onNavigateTab={setActiveTab}
+                featuredMenuItems={menuItems}
+                previewPhotos={galleryPhotos}
+                onAddToCart={handleAddToCart}
+              />
+            )}
+
+            {activeTab === 'kontak' && <KontakSection />}
+          </main>
+
+          {/* 4. Footer Matching Design */}
+          <Footer onSelectTab={setActiveTab} />
+
+          {/* 5. Cart Drawer Slide-out */}
+          <CartDrawer
+            isOpen={isCartOpen}
+            onClose={() => setIsCartOpen(false)}
+            cart={cart}
+            onUpdateQuantity={handleUpdateQuantity}
+            onRemoveItem={handleRemoveCartItem}
+            onClearCart={handleClearCart}
           />
-        )}
+        </>
+      )}
 
-        {activeTab === 'galeri' && (
-          <GaleriSection photos={galleryPhotos} />
-        )}
-
-        {activeTab === 'beranda' && (
-          <BerandaSection
-            onNavigateTab={setActiveTab}
-            featuredMenuItems={menuItems}
-            previewPhotos={galleryPhotos}
-            onAddToCart={handleAddToCart}
-          />
-        )}
-
-        {activeTab === 'kontak' && <KontakSection />}
-      </main>
-
-      {/* 4. Footer Matching Design */}
-      <Footer onSelectTab={setActiveTab} />
-
-      {/* 5. Cart Drawer Slide-out */}
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cart={cart}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveCartItem}
-        onClearCart={handleClearCart}
-      />
-
-      {/* 6. Admin Barista Management Modal */}
+      {/* 6. Admin Barista Management Modal (always mounted to keep auth state) */}
       <AdminModal
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
@@ -190,6 +231,9 @@ export default function App() {
         onSaveMenuItems={setMenuItems}
         onSaveGalleryPhotos={setGalleryPhotos}
         onResetToDefault={handleResetToDefault}
+        siteStatus={siteStatus}
+        onChangeStatus={setSiteStatus}
+        onAuthChange={setAdminSession}
       />
     </div>
   );

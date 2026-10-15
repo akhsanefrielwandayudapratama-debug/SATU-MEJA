@@ -1,6 +1,12 @@
-import React, { useState, useRef } from 'react';
-import { MenuItem, GalleryPhoto, CategoryType } from '../types';
-import { X, Lock, Plus, Trash2, Edit2, RotateCcw, Check, LogOut, Coffee, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { MenuItem, GalleryPhoto, CategoryType, SiteStatus } from '../types';
+import {
+  getGithubToken,
+  setGithubToken,
+  clearGithubToken,
+  pushSiteStatus,
+} from '../lib/siteStatus';
+import { X, Lock, Plus, Trash2, Edit2, RotateCcw, Check, LogOut, Coffee, Image as ImageIcon, Globe, KeyRound, Loader2, Power } from 'lucide-react';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -10,6 +16,9 @@ interface AdminModalProps {
   onSaveMenuItems: (items: MenuItem[]) => void;
   onSaveGalleryPhotos: (photos: GalleryPhoto[]) => void;
   onResetToDefault: () => void;
+  siteStatus: SiteStatus;
+  onChangeStatus: (status: SiteStatus) => void;
+  onAuthChange?: (authenticated: boolean) => void;
 }
 
 // Max file mentah 10MB, hasil kompres max 1024px sisi panjang, JPEG kualitas 0.82
@@ -59,11 +68,14 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   onSaveMenuItems,
   onSaveGalleryPhotos,
   onResetToDefault,
+  siteStatus,
+  onChangeStatus,
+  onAuthChange,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeAdminTab, setActiveAdminTab] = useState<'menu' | 'gallery'>('menu');
+  const [activeAdminTab, setActiveAdminTab] = useState<'menu' | 'gallery' | 'status'>('menu');
 
   // Menu Form State
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
@@ -86,6 +98,20 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [isReadingPhotoImage, setIsReadingPhotoImage] = useState(false);
   const menuFileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
+
+  // Site status (buka/tutup) state
+  const [tokenInput, setTokenInput] = useState(() => getGithubToken());
+  const [statusMessage, setStatusMessage] = useState(siteStatus.message);
+  const [statusReopenInfo, setStatusReopenInfo] = useState(siteStatus.reopenInfo || '');
+  const [isSavingStatus, setIsSavingStatus] = useState(false);
+  const [statusError, setStatusError] = useState('');
+  const [statusSuccess, setStatusSuccess] = useState('');
+
+  // Sinkronkan field saat status global berubah
+  useEffect(() => {
+    setStatusMessage(siteStatus.message);
+    setStatusReopenInfo(siteStatus.reopenInfo || '');
+  }, [siteStatus.message, siteStatus.reopenInfo, siteStatus.updatedAt]);
 
   const resetMenuForm = () => {
     setEditingMenuId(null);
@@ -144,8 +170,43 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     if (pinInput === 'baristaDU26') {
       setIsAuthenticated(true);
       setErrorMsg('');
+      onAuthChange?.(true);
     } else {
       setErrorMsg('Password salah. Silakan coba lagi.');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setActiveAdminTab('menu');
+    onAuthChange?.(false);
+  };
+
+  // SITE STATUS (buka/tutup)
+  const handleSaveStatus = async (nextOpen: boolean) => {
+    setIsSavingStatus(true);
+    setStatusError('');
+    setStatusSuccess('');
+    try {
+      if (tokenInput.trim()) setGithubToken(tokenInput);
+      const saved = await pushSiteStatus(
+        {
+          open: nextOpen,
+          message: statusMessage,
+          reopenInfo: statusReopenInfo,
+        },
+        tokenInput
+      );
+      onChangeStatus(saved);
+      setStatusSuccess(
+        nextOpen
+          ? 'Website berhasil DIBUKA. Pelanggan bisa mengakses kembali.'
+          : 'Website berhasil DITUTUP. Pelanggan akan melihat halaman istirahat.'
+      );
+    } catch (err) {
+      setStatusError(err instanceof Error ? err.message : 'Gagal menyimpan status.');
+    } finally {
+      setIsSavingStatus(false);
     }
   };
 
@@ -267,7 +328,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
           <div className="flex items-center gap-2">
             {isAuthenticated && (
               <button
-                onClick={() => setIsAuthenticated(false)}
+                onClick={handleLogout}
                 className="p-2 text-xs font-semibold text-[#8D3B2B] hover:bg-[#F2ECE1] rounded-lg flex items-center gap-1 cursor-pointer"
                 title="Keluar"
               >
@@ -327,8 +388,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({
             /* Admin Management Interface */
             <div className="space-y-6">
               {/* Tab Selector */}
-              <div className="flex items-center justify-between border-b border-[#E2D6C0] pb-3">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2D6C0] pb-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setActiveAdminTab('menu')}
                     className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -351,6 +412,24 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   >
                     <ImageIcon className="w-4 h-4" />
                     <span>Kelola Galeri ({galleryPhotos.length})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveAdminTab('status')}
+                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      activeAdminTab === 'status'
+                        ? 'bg-[#2C1810] text-white'
+                        : 'bg-[#EAE0D0] text-[#5C4535] hover:bg-[#E0D4C2]'
+                    }`}
+                  >
+                    <Globe className="w-4 h-4" />
+                    <span>Status Website</span>
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        siteStatus.open ? 'bg-[#2E7D32]' : 'bg-[#D32F2F]'
+                      }`}
+                      title={siteStatus.open ? 'Terbuka' : 'Tertutup'}
+                    />
                   </button>
                 </div>
 
@@ -696,6 +775,163 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* TAB 3: STATUS WEBSITE (BUKA/TUTUP) */}
+              {activeAdminTab === 'status' && (
+                <div className="space-y-6">
+                  {/* Current status banner */}
+                  <div
+                    className={`rounded-2xl p-4 sm:p-5 border flex items-start gap-4 ${
+                      siteStatus.open
+                        ? 'bg-[#E8F5E9] border-[#C8E6C9]'
+                        : 'bg-[#FFEBEE] border-[#FFCDD2]'
+                    }`}
+                  >
+                    <div
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                        siteStatus.open
+                          ? 'bg-[#2E7D32] text-white'
+                          : 'bg-[#D32F2F] text-white'
+                      }`}
+                    >
+                      <Power className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm text-[#2C1810]">
+                        Website saat ini {siteStatus.open ? 'TERBUKA' : 'TERTUTUP'}
+                      </h5>
+                      <p className="text-xs text-[#5C4535] mt-0.5 leading-relaxed">
+                        {siteStatus.open
+                          ? 'Pelanggan dapat melihat menu, galeri, dan memesan.'
+                          : 'Pelanggan hanya melihat halaman "Sedang Tutup" dan tidak bisa memesan.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Token */}
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8DFC8] space-y-2">
+                    <h5 className="font-bold text-sm text-[#2C1810] flex items-center gap-1.5">
+                      <KeyRound className="w-4 h-4" />
+                      <span>Token GitHub</span>
+                    </h5>
+                    <p className="text-[11px] text-[#7A685A] leading-relaxed">
+                      Tempel <strong>fine-grained personal access token</strong> (repo{' '}
+                      <em>SATU-MEJA</em>, permission <em>Contents: Read and write</em>). Token
+                      disimpan hanya di browser perangkat ini.
+                    </p>
+                    <input
+                      type="password"
+                      placeholder="github_pat_..."
+                      value={tokenInput}
+                      onChange={(e) => setTokenInput(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8] font-mono"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGithubToken(tokenInput);
+                          setStatusSuccess('Token disimpan di perangkat ini.');
+                          setStatusError('');
+                        }}
+                        className="px-3 py-1.5 bg-[#EAE0D0] text-[#4E382A] text-[11px] font-semibold rounded-lg cursor-pointer"
+                      >
+                        Simpan Token
+                      </button>
+                      {tokenInput && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearGithubToken();
+                            setTokenInput('');
+                            setStatusSuccess('Token dihapus dari perangkat ini.');
+                            setStatusError('');
+                          }}
+                          className="px-3 py-1.5 bg-[#FFEBEE] text-[#D32F2F] text-[11px] font-semibold rounded-lg cursor-pointer"
+                        >
+                          Kosongkan
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Message fields */}
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8DFC8] space-y-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4E382A] mb-1">
+                        Pesan Saat Tutup
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Kami sedang istirahat sejenak..."
+                        value={statusMessage}
+                        onChange={(e) => setStatusMessage(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4E382A] mb-1">
+                        Info Buka Lagi (opsional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Buka lagi sekitar jam 10.00"
+                        value={statusReopenInfo}
+                        onChange={(e) => setStatusReopenInfo(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Feedback */}
+                  {statusError && (
+                    <p className="text-xs text-[#D32F2F] font-semibold bg-[#FFEBEE] p-3 rounded-lg">
+                      {statusError}
+                    </p>
+                  )}
+                  {statusSuccess && (
+                    <p className="text-xs text-[#2E7D32] font-semibold bg-[#E8F5E9] p-3 rounded-lg">
+                      {statusSuccess}
+                    </p>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    {siteStatus.open ? (
+                      <button
+                        onClick={() => handleSaveStatus(false)}
+                        disabled={isSavingStatus}
+                        className="flex-1 py-3 bg-[#D32F2F] hover:bg-[#B71C1C] disabled:opacity-60 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {isSavingStatus ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Power className="w-4 h-4" />
+                        )}
+                        <span>Tutup Website (Istirahat)</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSaveStatus(true)}
+                        disabled={isSavingStatus}
+                        className="flex-1 py-3 bg-[#2E7D32] hover:bg-[#1B5E20] disabled:opacity-60 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {isSavingStatus ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Power className="w-4 h-4" />
+                        )}
+                        <span>Buka Website Kembali</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-[#8A786B] leading-relaxed">
+                    Perubahan berlaku untuk semua pengunjung dalam beberapa detik setelah tersimpan
+                    di GitHub. Pastikan token sudah diisi sebelum menekan tombol.
+                  </p>
                 </div>
               )}
             </div>

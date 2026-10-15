@@ -25,4 +25,11 @@ export interface GalleryPhoto {
   category: 'coffee' | 'atmosphere' | 'barista';
 }
 
+export interface SiteStatus {
+  open: boolean;
+  message: string;
+  reopenInfo?: string;
+  updatedAt?: string;
+}
+
 export type TabType = 'beranda' | 'menu' | 'tentang' | 'galeri' | 'kontak';
