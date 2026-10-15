@@ -1,7 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MenuItem, GalleryPhoto, CategoryType, SiteStatus } from '../types';
-import { fetchSiteStatus, STATUS_EDIT_URL } from '../lib/siteStatus';
-import { X, Lock, Plus, Trash2, Edit2, RotateCcw, Check, LogOut, Coffee, Image as ImageIcon, Globe, ExternalLink, RefreshCw, Power } from 'lucide-react';
+import {
+  getGithubToken,
+  setGithubToken,
+  clearGithubToken,
+  pushSiteStatus,
+} from '../lib/siteStatus';
+import { X, Lock, Plus, Trash2, Edit2, RotateCcw, Check, LogOut, Coffee, Image as ImageIcon, Globe, KeyRound, Loader2, Power } from 'lucide-react';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -95,7 +100,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const photoFileRef = useRef<HTMLInputElement>(null);
 
   // Site status (buka/tutup) state
-  const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
+  const [tokenInput, setTokenInput] = useState(() => getGithubToken());
+  const [statusMessage, setStatusMessage] = useState(siteStatus.message);
+  const [statusReopenInfo, setStatusReopenInfo] = useState(siteStatus.reopenInfo || '');
+  const [isSavingStatus, setIsSavingStatus] = useState(false);
+  const [statusError, setStatusError] = useState('');
+  const [statusSuccess, setStatusSuccess] = useState('');
+
+  // Sinkronkan field saat status global berubah
+  useEffect(() => {
+    setStatusMessage(siteStatus.message);
+    setStatusReopenInfo(siteStatus.reopenInfo || '');
+  }, [siteStatus.message, siteStatus.reopenInfo, siteStatus.updatedAt]);
 
   const resetMenuForm = () => {
     setEditingMenuId(null);
@@ -166,14 +182,31 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     onAuthChange?.(false);
   };
 
-  // SITE STATUS (buka/tutup) — dibaca ulang dari GitHub tanpa token
-  const handleRefreshStatus = async () => {
-    setIsRefreshingStatus(true);
+  // SITE STATUS (buka/tutup)
+  const handleSaveStatus = async (nextOpen: boolean) => {
+    setIsSavingStatus(true);
+    setStatusError('');
+    setStatusSuccess('');
     try {
-      const latest = await fetchSiteStatus();
-      onChangeStatus(latest);
+      if (tokenInput.trim()) setGithubToken(tokenInput);
+      const saved = await pushSiteStatus(
+        {
+          open: nextOpen,
+          message: statusMessage,
+          reopenInfo: statusReopenInfo,
+        },
+        tokenInput
+      );
+      onChangeStatus(saved);
+      setStatusSuccess(
+        nextOpen
+          ? 'Website berhasil DIBUKA. Pelanggan bisa mengakses kembali.'
+          : 'Website berhasil DITUTUP. Pelanggan akan melihat halaman istirahat.'
+      );
+    } catch (err) {
+      setStatusError(err instanceof Error ? err.message : 'Gagal menyimpan status.');
     } finally {
-      setIsRefreshingStatus(false);
+      setIsSavingStatus(false);
     }
   };
 
@@ -777,68 +810,127 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Panduan tanpa token */}
-                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8DFC8] space-y-3">
-                    <h5 className="font-bold text-sm text-[#2C1810]">
-                      Cara Menutup / Membuka Website
+                  {/* Token */}
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8DFC8] space-y-2">
+                    <h5 className="font-bold text-sm text-[#2C1810] flex items-center gap-1.5">
+                      <KeyRound className="w-4 h-4" />
+                      <span>Token GitHub</span>
                     </h5>
-                    <ol className="text-xs text-[#5C4535] leading-relaxed list-decimal pl-4 space-y-1.5">
-                      <li>Klik tombol <strong>Buka Halaman Edit di GitHub</strong> di bawah.</li>
-                      <li>
-                        Ubah baris <code className="bg-[#F2EAE0] px-1 rounded text-[11px]">"open"</code>:
-                        <br />
-                        <code className="bg-[#F2EAE0] px-1 rounded text-[11px]">true</code> = website{' '}
-                        <strong>terbuka</strong>,{' '}
-                        <code className="bg-[#F2EAE0] px-1 rounded text-[11px]">false</code> = website{' '}
-                        <strong>tertutup</strong>.
-                      </li>
-                      <li>Opsional: ubah <strong>message</strong> (pesan saat tutup) & <strong>reopenInfo</strong>.</li>
-                      <li>Klik <strong>Commit changes</strong> di GitHub.</li>
-                      <li>Kembali ke sini, tekan <strong>Muat Ulang Status</strong>.</li>
-                    </ol>
-
-                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                      <a
-                        href={STATUS_EDIT_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 py-2.5 bg-[#2C1810] hover:bg-[#43301F] text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Buka Halaman Edit di GitHub</span>
-                      </a>
+                    <p className="text-[11px] text-[#7A685A] leading-relaxed">
+                      Tempel <strong>fine-grained personal access token</strong> (repo{' '}
+                      <em>SATU-MEJA</em>, permission <em>Contents: Read and write</em>). Token
+                      disimpan hanya di browser perangkat ini.
+                    </p>
+                    <input
+                      type="password"
+                      placeholder="github_pat_..."
+                      value={tokenInput}
+                      onChange={(e) => setTokenInput(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8] font-mono"
+                    />
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={handleRefreshStatus}
-                        disabled={isRefreshingStatus}
-                        className="flex-1 py-2.5 bg-[#EAE0D0] hover:bg-[#DDD0B8] disabled:opacity-60 text-[#4E382A] font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          setGithubToken(tokenInput);
+                          setStatusSuccess('Token disimpan di perangkat ini.');
+                          setStatusError('');
+                        }}
+                        className="px-3 py-1.5 bg-[#EAE0D0] text-[#4E382A] text-[11px] font-semibold rounded-lg cursor-pointer"
                       >
-                        <RefreshCw className={`w-4 h-4 ${isRefreshingStatus ? 'animate-spin' : ''}`} />
-                        <span>Muat Ulang Status</span>
+                        Simpan Token
                       </button>
+                      {tokenInput && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearGithubToken();
+                            setTokenInput('');
+                            setStatusSuccess('Token dihapus dari perangkat ini.');
+                            setStatusError('');
+                          }}
+                          className="px-3 py-1.5 bg-[#FFEBEE] text-[#D32F2F] text-[11px] font-semibold rounded-lg cursor-pointer"
+                        >
+                          Kosongkan
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  {/* Nilai saat ini (read-only) */}
-                  <div className="bg-[#FAF7F2] rounded-2xl p-4 sm:p-5 border border-[#E8DFC8] space-y-2">
-                    <h5 className="font-bold text-[11px] text-[#7A685A] uppercase tracking-wide">
-                      Nilai Saat Ini
-                    </h5>
-                    <div className="text-xs text-[#5C4535] space-y-1">
-                      <p>
-                        <span className="font-semibold">Pesan tutup:</span>{' '}
-                        {siteStatus.message || <em>(kosong)</em>}
-                      </p>
-                      <p>
-                        <span className="font-semibold">Info buka lagi:</span>{' '}
-                        {siteStatus.reopenInfo || <em>(kosong)</em>}
-                      </p>
+                  {/* Message fields */}
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E8DFC8] space-y-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4E382A] mb-1">
+                        Pesan Saat Tutup
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Kami sedang istirahat sejenak..."
+                        value={statusMessage}
+                        onChange={(e) => setStatusMessage(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8]"
+                      />
                     </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#4E382A] mb-1">
+                        Info Buka Lagi (opsional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Buka lagi sekitar jam 10.00"
+                        value={statusReopenInfo}
+                        onChange={(e) => setStatusReopenInfo(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-[#FAF7F2] rounded-lg text-xs border border-[#D9CDB8]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Feedback */}
+                  {statusError && (
+                    <p className="text-xs text-[#D32F2F] font-semibold bg-[#FFEBEE] p-3 rounded-lg">
+                      {statusError}
+                    </p>
+                  )}
+                  {statusSuccess && (
+                    <p className="text-xs text-[#2E7D32] font-semibold bg-[#E8F5E9] p-3 rounded-lg">
+                      {statusSuccess}
+                    </p>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    {siteStatus.open ? (
+                      <button
+                        onClick={() => handleSaveStatus(false)}
+                        disabled={isSavingStatus}
+                        className="flex-1 py-3 bg-[#D32F2F] hover:bg-[#B71C1C] disabled:opacity-60 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {isSavingStatus ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Power className="w-4 h-4" />
+                        )}
+                        <span>Tutup Website (Istirahat)</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSaveStatus(true)}
+                        disabled={isSavingStatus}
+                        className="flex-1 py-3 bg-[#2E7D32] hover:bg-[#1B5E20] disabled:opacity-60 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {isSavingStatus ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Power className="w-4 h-4" />
+                        )}
+                        <span>Buka Website Kembali</span>
+                      </button>
+                    )}
                   </div>
 
                   <p className="text-[11px] text-[#8A786B] leading-relaxed">
-                    Tanpa token. Perubahan berlaku untuk semua pengunjung beberapa detik setelah
-                    di-Commit di GitHub. Jika status belum berubah, tekan <strong>Muat Ulang Status</strong>.
+                    Perubahan berlaku untuk semua pengunjung dalam beberapa detik setelah tersimpan
+                    di GitHub. Pastikan token sudah diisi sebelum menekan tombol.
                   </p>
                 </div>
               )}
