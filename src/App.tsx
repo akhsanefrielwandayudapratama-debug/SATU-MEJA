@@ -128,15 +128,6 @@ export default function App() {
     setCart([]);
   };
 
-  const handleResetToDefault = () => {
-    if (window.confirm('Kembalikan menu dan galeri ke data awal bawaan?')) {
-      setMenuItems(INITIAL_MENU_ITEMS);
-      setGalleryPhotos(INITIAL_GALLERY_PHOTOS);
-      localStorage.removeItem('satu_meja_menu');
-      localStorage.removeItem('satu_meja_gallery');
-    }
-  };
-
   const cartTotalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   // Loading splash while reading site status
@@ -230,7 +221,6 @@ export default function App() {
         galleryPhotos={galleryPhotos}
         onSaveMenuItems={setMenuItems}
         onSaveGalleryPhotos={setGalleryPhotos}
-        onResetToDefault={handleResetToDefault}
         siteStatus={siteStatus}
         onChangeStatus={setSiteStatus}
         onAuthChange={setAdminSession}

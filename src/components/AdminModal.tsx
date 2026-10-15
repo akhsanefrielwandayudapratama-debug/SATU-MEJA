@@ -6,7 +6,7 @@ import {
   clearGithubToken,
   pushSiteStatus,
 } from '../lib/siteStatus';
-import { X, Lock, Plus, Trash2, Edit2, RotateCcw, Check, LogOut, Coffee, Image as ImageIcon, Globe, KeyRound, Loader2, Power } from 'lucide-react';
+import { X, Lock, Plus, Trash2, Edit2, Check, LogOut, Coffee, Image as ImageIcon, Globe, KeyRound, Loader2, Power } from 'lucide-react';
 
 interface AdminModalProps {
   isOpen: boolean;
@@ -15,7 +15,6 @@ interface AdminModalProps {
   galleryPhotos: GalleryPhoto[];
   onSaveMenuItems: (items: MenuItem[]) => void;
   onSaveGalleryPhotos: (photos: GalleryPhoto[]) => void;
-  onResetToDefault: () => void;
   siteStatus: SiteStatus;
   onChangeStatus: (status: SiteStatus) => void;
   onAuthChange?: (authenticated: boolean) => void;
@@ -67,7 +66,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   galleryPhotos,
   onSaveMenuItems,
   onSaveGalleryPhotos,
-  onResetToDefault,
   siteStatus,
   onChangeStatus,
   onAuthChange,
@@ -432,15 +430,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     />
                   </button>
                 </div>
-
-                <button
-                  onClick={onResetToDefault}
-                  className="text-xs text-[#8D3B2B] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                  title="Kembalikan ke data awal bawaan"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Reset Default</span>
-                </button>
               </div>
 
               {/* TAB 1: KELOLA MENU */}
