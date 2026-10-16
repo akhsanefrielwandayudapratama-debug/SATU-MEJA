@@ -1,0 +1,26 @@
+name = "satu-meja-pay"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Binding KV untuk menyimpan pesanan.
+# Buat dulu: `npx wrangler kv namespace create ORDERS`
+# lalu tempel id (dan preview_id) di bawah.
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "GANTI_DENGAN_ID_KV_PRODUCTION"
+preview_id = "GANTI_DENGAN_ID_KV_PREVIEW"
+
+[vars]
+# "sandbox" untuk uji coba (uang bohongan), "production" untuk asli.
+MIDTRANS_ENV = "sandbox"
+# Client Key Midtrans (aman ditampilkan di sisi pelanggan).
+MIDTRANS_CLIENT_KEY = "GANTI_DENGAN_MIDTRANS_CLIENT_KEY"
+# Domain yang diizinkan memanggil API (dipisah koma). Sertakan domain GitHub Pages Anda.
+ALLOWED_ORIGINS = "https://akhsanefrielwandayudapratama-debug.github.io,http://localhost:3000"
+# Nomor WhatsApp Anda (format 62...) untuk menerima notifikasi pesanan lunas.
+OWNER_WA = "6282216828280"
+OWNER_NAME = "Satu Meja"
+
+# SECRET (JANGAN taruh di file ini). Set lewat terminal:
+#   npx wrangler secret put MIDTRANS_SERVER_KEY
+#   npx wrangler secret put FONNTE_TOKEN        (opsional, untuk notifikasi WhatsApp)

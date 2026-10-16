@@ -81,45 +81,59 @@ export const pushSiteStatus = async (
     'X-GitHub-Api-Version': '2022-11-28',
   };
 
-  // Ambil sha file saat ini (wajib untuk update)
-  const getRes = await fetch(`${API_URL}?ref=${BRANCH}`, { headers });
-  let sha: string | undefined;
-  if (getRes.ok) {
-    const current = (await getRes.json()) as { sha?: string };
-    sha = current.sha;
-  } else if (getRes.status !== 404) {
-    throw new Error(
-      getRes.status === 401 || getRes.status === 403
-        ? 'Token tidak valid atau tidak punya izin (butuh Contents: Read and write).'
-        : `Gagal membaca status (${getRes.status}).`
-    );
+  // Baca sha (wajib untuk update) lalu tulis. Bila 409 (sha kadaluarsa
+  // karena file berubah di antara baca & tulis), ambil sha terbaru lalu
+  // coba lagi. GET pakai cache: 'no-store' agar sha tidak pernah basi.
+  const MAX_ATTEMPTS = 3;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    const getRes = await fetch(`${API_URL}?ref=${BRANCH}&t=${Date.now()}`, {
+      headers,
+      cache: 'no-store',
+    });
+    let sha: string | undefined;
+    if (getRes.ok) {
+      const current = (await getRes.json()) as { sha?: string };
+      sha = current.sha;
+    } else if (getRes.status !== 404) {
+      throw new Error(
+        getRes.status === 401 || getRes.status === 403
+          ? 'Token tidak valid atau tidak punya izin (butuh Contents: Read and write).'
+          : `Gagal membaca status (${getRes.status}).`
+      );
+    }
+
+    const nextStatus: SiteStatus = {
+      open: status.open,
+      message: status.message.trim() || DEFAULT_SITE_STATUS.message,
+      reopenInfo: status.reopenInfo?.trim() || '',
+      updatedAt: new Date().toISOString(),
+    };
+
+    const putRes = await fetch(API_URL, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `chore: ${nextStatus.open ? 'buka' : 'tutup'} website`,
+        content: toBase64(JSON.stringify(nextStatus, null, 2) + '\n'),
+        sha,
+        branch: BRANCH,
+      }),
+    });
+
+    if (putRes.ok) {
+      return nextStatus;
+    }
+
+    if (putRes.status === 401 || putRes.status === 403) {
+      throw new Error('Token tidak valid atau tidak punya izin menulis.');
+    }
+
+    // 409 = konflik sha; ulangi dengan sha terbaru (kecuali percobaan terakhir).
+    if (putRes.status !== 409 || attempt === MAX_ATTEMPTS) {
+      throw new Error(`Gagal menyimpan status (${putRes.status}).`);
+    }
   }
 
-  const nextStatus: SiteStatus = {
-    open: status.open,
-    message: status.message.trim() || DEFAULT_SITE_STATUS.message,
-    reopenInfo: status.reopenInfo?.trim() || '',
-    updatedAt: new Date().toISOString(),
-  };
-
-  const putRes = await fetch(API_URL, {
-    method: 'PUT',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: `chore: ${nextStatus.open ? 'buka' : 'tutup'} website`,
-      content: toBase64(JSON.stringify(nextStatus, null, 2) + '\n'),
-      sha,
-      branch: BRANCH,
-    }),
-  });
-
-  if (!putRes.ok) {
-    throw new Error(
-      putRes.status === 401 || putRes.status === 403
-        ? 'Token tidak valid atau tidak punya izin menulis.'
-        : `Gagal menyimpan status (${putRes.status}).`
-    );
-  }
-
-  return nextStatus;
+  throw new Error('Gagal menyimpan status (409). Silakan coba lagi.');
 };
