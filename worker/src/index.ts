@@ -7,6 +7,24 @@
 // Rahasia disimpan sebagai secret Cloudflare: MIDTRANS_SERVER_KEY, FONNTE_TOKEN (opsional).
 // Konfigurasi publik (vars): MIDTRANS_ENV, MIDTRANS_CLIENT_KEY, ALLOWED_ORIGINS, OWNER_WA, OWNER_NAME.
 
+// Menu kanonik: sumber yang sama dengan situs (../../menu.json). Dipakai untuk
+// memvalidasi harga di sisi server agar tidak bisa dimanipulasi pelanggan.
+import MENU_DATA from '../../menu.json';
+
+interface CanonicalMenu {
+  id: string;
+  name: string;
+  price: number;
+  isAvailable: boolean;
+}
+
+const MENU_MAP = new Map<string, CanonicalMenu>(
+  (MENU_DATA as CanonicalMenu[]).map((m) => [
+    m.id,
+    { id: m.id, name: m.name, price: m.price, isAvailable: m.isAvailable !== false },
+  ])
+);
+
 export interface Env {
   ORDERS: KVNamespace;
   MIDTRANS_SERVER_KEY: string;
@@ -106,15 +124,31 @@ async function handleCreateOrder(
     return json({ error: 'Nama dan nomor WhatsApp wajib diisi.' }, 400, env, origin);
   }
 
-  const items: OrderItem[] = body.items
-    .map((it: any) => ({
-      id: String(it.id ?? ''),
-      name: String(it.name ?? 'Item').slice(0, 50),
-      price: Math.max(0, Math.round(Number(it.price) || 0)),
-      quantity: Math.max(1, Math.round(Number(it.quantity) || 1)),
-      notes: it.notes ? String(it.notes).slice(0, 100) : undefined,
-    }))
-    .filter((it: OrderItem) => it.price > 0);
+  // Validasi tiap item terhadap menu kanonik: id harus ada & tersedia, dan
+  // harga/nama DIAMBIL DARI SERVER (bukan dari klien) agar tidak bisa dipalsukan.
+  const items: OrderItem[] = [];
+  for (const raw of body.items as any[]) {
+    const menu = MENU_MAP.get(String(raw?.id ?? ''));
+    if (!menu) {
+      return json(
+        { error: `Menu tidak dikenal: ${String(raw?.id ?? '')}.` },
+        400,
+        env,
+        origin
+      );
+    }
+    if (!menu.isAvailable) {
+      return json({ error: `Menu tidak tersedia: ${menu.name}.` }, 400, env, origin);
+    }
+    const quantity = Math.min(50, Math.max(1, Math.round(Number(raw?.quantity) || 1)));
+    items.push({
+      id: menu.id,
+      name: menu.name.slice(0, 50),
+      price: menu.price,
+      quantity,
+      notes: raw?.notes ? String(raw.notes).slice(0, 100) : undefined,
+    });
+  }
 
   const total = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
   if (items.length === 0 || total < 1) {
